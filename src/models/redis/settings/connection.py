@@ -20,3 +20,5 @@ class RedisConnectionHandler:
         if self.__redis_conn is None:
             raise ValueError("Redis connection not established. Call connect() first.")
         return self.__redis_conn
+    
+redis_connection_handle = RedisConnectionHandler()
