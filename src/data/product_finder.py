@@ -3,24 +3,29 @@ from src.models.redis.repository.interfaces.redis_repository_interface import Re
 from src.http_types.http_request import HttpRequest
 from src.http_types.http_response import HttpResponse
 
+from src.errors.error_handler import error_handler
+from src.errors.types.http_not_found_error import HttpNotFoundError
+
 class ProductFinder:
     def __init__(self, redis_repo: RedisRepositoryInterface, products_repo: ProductsRepositoryInterface) -> None:
         self.__redis_repo = redis_repo
         self.__sqlite_repo = products_repo
 
     def find_by_name(self, http_request: HttpRequest) -> HttpResponse:
-        product_name = http_request.params['product_name']
-        product = None
-        product = self.__find_in_redis(product_name)
+        try:
+            product_name = http_request.params['product_name']
+            product = None
+            product = self.__find_in_redis(product_name)
 
-        if not product:
-            product = self.__find_in_sqlite(product_name)
-            self.__insert_in_cache(product)
+            if not product:
+                product = self.__find_in_sqlite(product_name)
+                self.__insert_in_cache(product)
 
-        formated_response = self.__format_response(product)
-        return formated_response
-
-
+            formated_response = self.__format_response(product)
+            return formated_response
+        except Exception as e:
+            return error_handler()
+        
     def __find_in_redis(self, product_name: str) -> tuple:
         product = self.__redis_repo.get_key(product_name)
         if product:
@@ -33,7 +38,7 @@ class ProductFinder:
     def __find_in_sqlite(self, product_name: str) -> tuple:
         product = self.__sqlite_repo.find_product_by_name(product_name)
         if not product:
-            raise Exception('Product not found')
+            raise HttpNotFoundError('Product not found')
         return product
     
     def __insert_in_cache(self, product:tuple) -> None:
